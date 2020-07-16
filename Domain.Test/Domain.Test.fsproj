@@ -9,6 +9,7 @@
     <Compile Include="FuelCalculatorTest.fs" />
     <Compile Include="IntcodeInterpreterTest.fs" />
     <Compile Include="UtilsTest.fs" />
+    <Compile Include="WiresTest.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="nunit" Version="3.11.0" />

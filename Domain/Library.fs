@@ -116,3 +116,107 @@ module IntcodeInterpreter =
 
     let setNoun (verb: int) memory = replaceElement memory 1 verb
 
+module Wires =
+    type Direction =
+        | Up
+        | Down
+        | Left
+        | Right
+
+    type WirePathDescription = Direction * int
+
+    type GridX = GridX of int
+    type GridY = GridY of int
+    type WireCoordinate = GridX * GridY
+    type WirePath = WireCoordinate * WireCoordinate
+    type Wire = WirePath list
+
+    // translate input to wire
+    let toDirection direction =
+        match direction with
+        | "U" -> Up
+        | "D" -> Down
+        | "L" -> Left
+        | "R" -> Right
+
+    let toWirePathDescription (wirePath: string): WirePathDescription =
+        let direction = wirePath.Remove 1 |> toDirection
+        let pathLength = wirePath.Substring 1 |> int
+        (direction, pathLength)
+
+    let extendWire wire wirePath =
+        let (GridX xCoordinate, GridY yCoordinate) = List.last wire
+
+        let newCoordinate =
+            match wirePath with
+            | (Up, y) -> (GridX xCoordinate, GridY(yCoordinate + y))
+            | (Down, y) -> (GridX xCoordinate, GridY(yCoordinate - y))
+            | (Right, x) -> (GridX(xCoordinate + x), GridY yCoordinate)
+            | (Left, x) -> (GridX(xCoordinate - x), GridY yCoordinate)
+
+        wire @ [ newCoordinate ]
+
+    let toWireCoordinates (wirePathDescription: WirePathDescription list) =
+        List.fold extendWire [ (GridX 0, GridY 0) ] wirePathDescription
+
+    let toWire (coordinates: WireCoordinate list) =
+        let rec toWirePath result cs =
+            match cs with
+            | head :: [ tail ] -> result @ [ (head, tail) ]
+            | head :: tail -> toWirePath (result @ [ (head, tail.Head) ]) tail
+            | _ -> result
+
+        toWirePath [] coordinates
+
+    let decode (wirePath: string) =
+        wirePath.Split ','
+        |> Array.toList
+        |> List.map toWirePathDescription
+        |> toWireCoordinates
+        |> toWire
+
+    let normalizePath path =
+        let reversedWirePath =
+            let (coordinate1, coordinate2) = path
+            WirePath(coordinate2, coordinate1)
+
+        let ((GridX x1, GridY y1), (GridX x2, GridY y2)) = path
+        if (x1 < x2 || y1 < y2) then path else reversedWirePath
+
+    // check single intersection
+    let checkIntersection (pathA: WirePath) (pathB: WirePath): WireCoordinate option =
+        let normalizedPathA = normalizePath pathA
+        let normalizedPathB = normalizePath pathB
+        let ((GridX a1x, GridY a1y), (GridX a2x, GridY a2y)) = normalizedPathA
+        let ((GridX b1x, GridY b1y), (GridX b2x, GridY b2y)) = normalizedPathB
+        if (a1x = a2x && b1y = b2y)
+           && (a1x > b1x && a1x < b2x)
+           && (b1y > a1y && b1y < a2y) then
+            Some(GridX a1x, GridY b1y)
+        else if (a1y = a2y && b1x = b2x)
+                && (a1y > b1y && a1y < b2y)
+                && (b1x > a1x && b1x < a2x) then
+            Some(GridX b1x, GridY a1y)
+        else
+            None
+
+    let compareWirePathToWire wire path =
+        wire
+        |> List.map (checkIntersection path)
+        |> List.choose id
+
+    let getIntersections (wireA: Wire) (wireB: Wire) =
+        wireA
+        |> List.map (compareWirePathToWire wireB)
+        |> List.concat
+
+    let getManhattenDistance coordinate =
+        let (GridX x, GridY y) = coordinate
+        abs x + abs y
+
+    let getNearestIntersection rawWireA rawWireB =
+        let wireA = decode rawWireA
+        let wireB = decode rawWireB
+        getIntersections wireA wireB
+        |> List.map getManhattenDistance
+        |> List.min
