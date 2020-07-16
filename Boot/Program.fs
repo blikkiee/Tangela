@@ -1,4 +1,4 @@
-﻿open Domain.FuelCalculator
+open Domain.FuelCalculator
 open Domain.IntcodeInterpreter
 open Domain.Utils
 
@@ -22,7 +22,7 @@ let main argv =
         (getElement res.Value 0).Value
     
     let simulation =
-        let rec simulate noun verb (map:Map<int, int*int>) =
+        let rec simulate noun verb (map:Map<int,int*int>) =
             let res = address0 noun verb
             if noun = 99 && verb = 99 then map.Add (res, (noun, verb))
             else if verb = 99 then simulate (noun+1) 0 (map.Add (res, (noun, verb)))
@@ -31,7 +31,7 @@ let main argv =
 
     let aimedOutput = 19690720
     let (noun, verb) = simulation.Item aimedOutput
-    // Day 2 - part 1 \\
+    // Day 2 - part 2 \\
     printfn "Day 2 - part 2: In order to get %d as output on 'address 0', %d is needed as noun and %d is needed as verb" aimedOutput noun verb
     // Day 2 - part 1 \\
     printfn "Day 2 - part 1: After running the program '%d' is on 'address 0'." (getElement result.Value 0).Value

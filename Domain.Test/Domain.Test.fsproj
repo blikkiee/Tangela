@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Domain\Domain.fsproj" />
@@ -9,7 +9,6 @@
     <Compile Include="FuelCalculatorTest.fs" />
     <Compile Include="IntcodeInterpreterTest.fs" />
     <Compile Include="UtilsTest.fs" />
-    <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="nunit" Version="3.11.0" />

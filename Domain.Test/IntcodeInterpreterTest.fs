@@ -18,6 +18,3 @@ type IntcodeInterpreterTestClass () =
             |> Option.get 
             |> encode
         Assert.AreEqual(expected, result)
-
-
-    // util tests
