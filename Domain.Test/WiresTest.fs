@@ -44,6 +44,32 @@ type WiresTestClass () =
     [<TestCase ("R8,U5,L5,D3", "U7,R6,D4,L4", 6)>]
     [<TestCase ("R75,D30,R83,U83,L12,D49,R71,U7,L72", "U62,R66,U55,R34,D71,R55,D58,R83", 159)>]
     [<TestCase ("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51", "U98,R91,D20,R16,D67,R40,U7,R15,U6,R7", 135)>]
-    member this.WireClosestIntersections (wire_1, wire_2, closestIntersection) =
-        let result = getNearestIntersection wire_1 wire_2
+    member this.WireClosestIntersections (wire1, wire2, closestIntersection) =
+        let result = getNearestIntersection wire1 wire2
         Assert.AreEqual(closestIntersection, result)
+
+    [<TestCase (2, 0, 2, 4, true)>]
+    [<TestCase (0, 2, 4, 2, true)>]
+    [<TestCase (1, 0, 1, 4, false)>]
+    [<TestCase (0, 1, 4, 1, false)>]
+    member this.CoordinateIsOnPath (path1x, path1y, path2x, path2y, expected) =
+     let coordinate = (GridX 2, GridY 2)
+     let path = ((GridX path1x, GridY path1y), (GridX path2x, GridY path2y))
+     let result = isOnPath coordinate path
+     Assert.AreEqual(result, expected)
+
+
+    [<TestCase (3, 3, 40)>]
+    [<TestCase (6, 5, 30)>]
+    member this.DistanceToIntersection (x, y, distance) =
+        let wireA = decode "R8,U5,L5,D3"
+        let wireB = decode "U7,R6,D4,L4"
+        let result = getTotalLoopDistance wireA wireB (GridX x, GridY y)
+        Assert.AreEqual(distance, result)
+
+    [<TestCase ("R8,U5,L5,D3", "U7,R6,D4,L4", 30)>]
+    [<TestCase ("R75,D30,R83,U83,L12,D49,R71,U7,L72", "U62,R66,U55,R34,D71,R55,D58,R83", 610)>]
+    [<TestCase ("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51", "U98,R91,D20,R16,D67,R40,U7,R15,U6,R7", 410)>]
+    member this.FewestStepsToIntersection(wire1, wire2, steps) =
+        let result = getShortestLoop wire1 wire2
+        Assert.AreEqual(steps, result)

@@ -35,6 +35,9 @@ module Utils =
         | (Some (c), Some (d)) -> Some(c * d)
         | _ -> None
 
+    let sum total x =
+        total + x
+
 module FuelCalculator =
 
     // mass of the module of a spacecraft
@@ -159,7 +162,7 @@ module Wires =
     let toWireCoordinates (wirePathDescription: WirePathDescription list) =
         List.fold extendWire [ (GridX 0, GridY 0) ] wirePathDescription
 
-    let toWire (coordinates: WireCoordinate list) =
+    let toWire coordinates =
         let rec toWirePath result cs =
             match cs with
             | head :: [ tail ] -> result @ [ (head, tail) ]
@@ -183,19 +186,21 @@ module Wires =
         let ((GridX x1, GridY y1), (GridX x2, GridY y2)) = path
         if (x1 < x2 || y1 < y2) then path else reversedWirePath
 
+    let isBetween lowerBound upperBound x = x > lowerBound && x < upperBound
+
     // check single intersection
-    let checkIntersection (pathA: WirePath) (pathB: WirePath): WireCoordinate option =
+    let checkIntersection (pathA: WirePath) (pathB: WirePath) =
         let normalizedPathA = normalizePath pathA
         let normalizedPathB = normalizePath pathB
         let ((GridX a1x, GridY a1y), (GridX a2x, GridY a2y)) = normalizedPathA
         let ((GridX b1x, GridY b1y), (GridX b2x, GridY b2y)) = normalizedPathB
         if (a1x = a2x && b1y = b2y)
-           && (a1x > b1x && a1x < b2x)
-           && (b1y > a1y && b1y < a2y) then
+           && (a1x |> isBetween b1x b2x)
+           && (b1y |> isBetween a1y a2y) then
             Some(GridX a1x, GridY b1y)
         else if (a1y = a2y && b1x = b2x)
-                && (a1y > b1y && a1y < b2y)
-                && (b1x > a1x && b1x < a2x) then
+                && (a1y |> isBetween b1y b2y)
+                && (b1x |> isBetween a1x a2x) then
             Some(GridX b1x, GridY a1y)
         else
             None
@@ -219,4 +224,39 @@ module Wires =
         let wireB = decode rawWireB
         getIntersections wireA wireB
         |> List.map getManhattenDistance
+        |> List.min
+
+    let areAllEqual a b c = a = b && a = c
+
+    let isOnPath coordinate path =
+        let ((GridX x1, GridY y1), (GridX x2, GridY y2)) = normalizePath path
+        let (GridX cx, GridY cy) = coordinate
+        (areAllEqual x1 x2 cx && cy |> isBetween y1 y2)
+        || (areAllEqual y1 y2 cy && cx |> isBetween x1 x2)
+
+    let getPathDistance path =
+        let ((GridX x1, GridY y1), (GridX x2, GridY y2)) = path
+        if (x1 = x2) then y1 - y2 |> abs
+        else x1 - x2 |> abs
+    
+    let getPathDistanceToCoordinate path coordinate =
+        let ((GridX x1, GridY y1), (GridX x2, _)) = path
+        let (GridX cx, GridY cy) = coordinate
+        if (x1 = x2) then cy - y1 |> abs
+        else cx - x1 |> abs
+
+    let rec getDistanceToIntersection coordinate wire =
+        match wire with 
+        | [] -> 0
+        | path :: _ when isOnPath coordinate path -> getPathDistanceToCoordinate path coordinate
+        | path :: paths -> getPathDistance path + getDistanceToIntersection coordinate paths
+
+    let getTotalLoopDistance wireA wireB coordinate =
+        getDistanceToIntersection coordinate wireA + getDistanceToIntersection coordinate wireB
+    
+    let getShortestLoop rawWireA rawWireB =
+        let wireA = decode rawWireA
+        let wireB = decode rawWireB
+        getIntersections wireA wireB
+        |> List.map (getTotalLoopDistance wireA wireB)
         |> List.min
