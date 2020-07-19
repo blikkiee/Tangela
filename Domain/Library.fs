@@ -35,8 +35,7 @@ module Utils =
         | (Some (c), Some (d)) -> Some(c * d)
         | _ -> None
 
-    let sum total x =
-        total + x
+    let sum total x = total + x
 
 module FuelCalculator =
 
@@ -236,27 +235,49 @@ module Wires =
 
     let getPathDistance path =
         let ((GridX x1, GridY y1), (GridX x2, GridY y2)) = path
-        if (x1 = x2) then y1 - y2 |> abs
-        else x1 - x2 |> abs
-    
+        if (x1 = x2) then y1 - y2 |> abs else x1 - x2 |> abs
+
     let getPathDistanceToCoordinate path coordinate =
         let ((GridX x1, GridY y1), (GridX x2, _)) = path
         let (GridX cx, GridY cy) = coordinate
-        if (x1 = x2) then cy - y1 |> abs
-        else cx - x1 |> abs
+        if (x1 = x2) then cy - y1 |> abs else cx - x1 |> abs
 
     let rec getDistanceToIntersection coordinate wire =
-        match wire with 
+        match wire with
         | [] -> 0
         | path :: _ when isOnPath coordinate path -> getPathDistanceToCoordinate path coordinate
-        | path :: paths -> getPathDistance path + getDistanceToIntersection coordinate paths
+        | path :: paths ->
+            getPathDistance path
+            + getDistanceToIntersection coordinate paths
 
     let getTotalLoopDistance wireA wireB coordinate =
-        getDistanceToIntersection coordinate wireA + getDistanceToIntersection coordinate wireB
-    
+        getDistanceToIntersection coordinate wireA
+        + getDistanceToIntersection coordinate wireB
+
     let getShortestLoop rawWireA rawWireB =
         let wireA = decode rawWireA
         let wireB = decode rawWireB
         getIntersections wireA wireB
         |> List.map (getTotalLoopDistance wireA wireB)
         |> List.min
+
+module PasswordCracking =
+    type PasswordOption = PasswordOption of int
+
+    let doesNotDecrease password =
+        let (PasswordOption pw) = password
+        let chars = pw |> string |> Seq.toList
+        chars = List.sort chars
+
+    let containsDuplicateDigit password =
+        let (PasswordOption pw) = password
+        let chars = pw |> string |> Seq.toList
+        chars
+        |> List.distinct
+        |> (fun x -> x.Length < chars.Length)
+
+    let countViablePasswords lowerBound upperBound =
+        [ lowerBound .. upperBound ]
+        |> List.map PasswordOption
+        |> List.filter (fun x -> doesNotDecrease x && containsDuplicateDigit x)
+        |> List.length

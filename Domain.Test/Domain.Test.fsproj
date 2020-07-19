@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="FuelCalculatorTest.fs" />
     <Compile Include="IntcodeInterpreterTest.fs" />
+    <Compile Include="PasswordCrackingTest.fs" />
     <Compile Include="UtilsTest.fs" />
     <Compile Include="WiresTest.fs" />
   </ItemGroup>
