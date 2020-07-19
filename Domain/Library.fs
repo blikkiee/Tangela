@@ -269,15 +269,17 @@ module PasswordCracking =
         let chars = pw |> string |> Seq.toList
         chars = List.sort chars
 
-    let containsDuplicateDigit password =
+    let containsDoubleDigit password =
         let (PasswordOption pw) = password
-        let chars = pw |> string |> Seq.toList
-        chars
-        |> List.distinct
-        |> (fun x -> x.Length < chars.Length)
+        pw
+        |> string
+        |> Seq.toList
+        |> List.groupBy id
+        |> List.map (fun (_, x) -> x.Length)
+        |> List.contains 2
 
     let countViablePasswords lowerBound upperBound =
         [ lowerBound .. upperBound ]
         |> List.map PasswordOption
-        |> List.filter (fun x -> doesNotDecrease x && containsDuplicateDigit x)
+        |> List.filter (fun x -> doesNotDecrease x && containsDoubleDigit x)
         |> List.length

@@ -13,13 +13,15 @@ type PasswordCrackingTestClass () =
         Assert.AreEqual(expected, result)
 
     [<TestCase (123456, false)>]
+    [<TestCase (123444, false)>]
+    [<TestCase (111122, true)>]
     [<TestCase (112345, true)>]
-    member this.ContainsDuplicateDigit (pw, expected) =
-        let result = PasswordOption pw |> containsDuplicateDigit
+    member this.ContainsDoubleDigit (pw, expected) =
+        let result = PasswordOption pw |> containsDoubleDigit
         Assert.AreEqual(expected, result)
     
-    [<TestCase (197487, 200000, 1)>]
-    [<TestCase (200000, 222223, 2)>]
+    [<TestCase (197487, 222233, 1)>]
+    [<TestCase (200000, 222244, 2)>]
     member this.CountViablePasswords (lowerBound, upperBound, expected) =
         let result = countViablePasswords lowerBound upperBound
         Assert.AreEqual(expected, result)
