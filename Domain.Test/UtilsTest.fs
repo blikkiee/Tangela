@@ -4,24 +4,7 @@ open NUnit.Framework
 open Domain.Utils
 
 [<TestFixture>]
-type UtilsTestClass () =    
-    [<Test>]
-    member this.GetElementOfEmptyList () =
-        let lst = []
-        let result = getElement lst 0
-        Assert.AreEqual(None, result)
-
-    [<Test>]
-    member this.GetSingleElement () =
-        let lst = ["a"; "b"]
-        let result = getElement lst 0
-        Assert.AreEqual(Some("a"), result)
-
-    [<Test>]
-    member this.GetOutOfBoundsElement () =
-        let lst = ["a"; "b"]
-        let result = getElement lst 3
-        Assert.AreEqual(None, result)
+type UtilsTestClass () =
     
     [<Test>]
     member this.ReplaceOutOfBoundsElement () =

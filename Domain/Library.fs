@@ -8,15 +8,6 @@ module Utils =
 
     let flatMap func input = Option.flatten (Option.map func input)
 
-    let getElement (lst: 'a list) index =
-        let rec toElement lst currentIndex =
-            let checkIndex head tail =
-                if index = currentIndex then Some(head) else toElement tail (currentIndex + 1)
-
-            nonEmptyListAction checkIndex lst
-
-        if lst.IsEmpty then None else toElement lst 0
-
     let replaceElement (lst: 'a list) (index: int) (newElement: 'a): 'a list option =
         let rec iterateElements currentIndex headLst currentElement tailLst =
             if index = currentIndex
@@ -82,37 +73,107 @@ module FuelCalculator =
 module IntcodeInterpreter =
     open Utils
 
+    type ParameterMode =
+        | PositionMode
+        | ImmediateMode
+
+    let getParameter program mode parameter =
+        let getItem index = List.tryItem index program
+        match mode with
+        | PositionMode -> parameter |> flatMap getItem
+        | ImmediateMode -> parameter
+
     let decode (input: string) =
         input.Split ',' |> Array.toList |> List.map int
 
     let encode (input: int list) =
         List.map (sprintf "%d") input |> String.concat ","
 
-    let calculate (lst: int list) method inputPosition1 inputPosition2 =
-        let input1 = flatMap (getElement lst) inputPosition1
-        let input2 = flatMap (getElement lst) inputPosition2
-        method input1 input2
-
-    let replace (lst: int list) index calculation =
-        match (index, calculation) with
-        | (Some (i), Some (c)) -> replaceElement lst i c
+    let tryUpdateProgram program index newValue =
+        match (index, newValue) with
+        | (Some (indx), Some (value)) -> replaceElement program indx value
         | _ -> None
 
-    let rec nextAction currentIndex (input: int list) =
-        let getInt = getElement input
-        match (getElement input currentIndex) with
-        | Some (1) ->
-            calculate input add (getInt (1 + currentIndex)) (getInt (2 + currentIndex))
-            |> replace input (getInt (3 + currentIndex))
-            |> flatMap (nextAction (currentIndex + 4))
-        | Some (2) ->
-            calculate input multiply (getInt (1 + currentIndex)) (getInt (2 + currentIndex))
-            |> replace input (getInt (3 + currentIndex))
-            |> flatMap (nextAction (currentIndex + 4))
-        | Some (99) -> Some(input)
-        | _ -> None
+    let addAction program parameters parametermode: int list option * int =
+        let (p1, p2, replaceIndex, nextIndex) = parameters
+        let (p1mode, p2mode) = parametermode
+        let param1 = getParameter program p1mode p1
+        let param2 = getParameter program p2mode p2
 
-    let start (input: int list) = nextAction 0 input
+        let updatedProgram =
+            add param1 param2 |> tryUpdateProgram program replaceIndex
+
+        (updatedProgram, nextIndex)
+
+    let multiplyAction program parameters parametermode: int list option * int =
+        let (p1, p2, replaceIndex, nextIndex) = parameters
+        let (p1mode, p2mode) = parametermode
+        let param1 = getParameter program p1mode p1
+        let param2 = getParameter program p2mode p2
+
+        let updatedProgram =
+            multiply param1 param2
+            |> tryUpdateProgram program replaceIndex
+
+        (updatedProgram, nextIndex)
+
+    let inputAction (input: int) program parameters _: int list option * int =
+        let (replaceIndex, _, _, nextIndex) = parameters
+
+        let updatedProgram =
+            tryUpdateProgram program replaceIndex (Some input)
+
+        (updatedProgram, nextIndex - 2)
+
+    let outputAction program parameters _: int list option * int =
+        let (showIndex, _, _, nextIndex) = parameters
+        List.item (Option.get showIndex) program
+        |> printfn "%d" // TODO both List.item and Option.get assume no None
+        (Some(program), nextIndex - 2)
+
+    let endProgram _ _ _: int list option * int =
+        printfn "end"
+        (None, 0)
+
+    let selectAction input opcode =
+        match opcode with
+        | 1 -> addAction
+        | 2 -> multiplyAction
+        | 3 -> inputAction input
+        | 4 -> outputAction
+        | _ -> endProgram // 99
+
+    let doAction program parameters parametermode action = action program parameters parametermode
+
+    let getParameterMode ch =
+        if ch = '0' then PositionMode
+        else ImmediateMode
+
+    let getOpcodeAndParameterModes instruction =
+        let reconstructOpcode (p1:char) (p2:char) = [p1; p2] |> System.String.Concat |> int
+        match (string instruction |> Seq.toList) with
+        | [p2; p1; opcode1; opcode2] -> reconstructOpcode opcode1 opcode2 , (getParameterMode p1, getParameterMode p2)
+        | [p1; opcode1; opcode2] -> reconstructOpcode opcode1 opcode2, (getParameterMode p1, PositionMode)
+        | _ -> instruction, (PositionMode, PositionMode)
+
+    let rec readProgram index input program =
+        let instruction = List.item index program
+        let getParam i = List.tryItem (index + i) program
+        let parameters = (getParam 1, getParam 2, getParam 3, index + 4)
+        let (opcode, parameterMode) = getOpcodeAndParameterModes instruction
+
+        let next result =
+            match result with
+            | (Some prgrm, 0) -> prgrm
+            | (Some prgrm, indx) -> readProgram indx input prgrm
+            | _ -> program
+
+        opcode
+        |> (selectAction input)
+        |> (doAction program parameters parameterMode)
+        |> next
+
+    let start input program = readProgram 0 input program
 
     let setVerb (verb: int) memory = replaceElement memory 2 verb
 
