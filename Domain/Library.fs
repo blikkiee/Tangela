@@ -96,33 +96,27 @@ module IntcodeInterpreter =
 
     let addAction program parameters parametermode: int list option * int =
         let (p1, p2, replaceIndex, nextIndex) = parameters
-        let (p1mode, p2mode) = parametermode
+        let (p1mode, p2mode, _) = parametermode
         let param1 = getParameter program p1mode p1
         let param2 = getParameter program p2mode p2
-
         let updatedProgram =
             add param1 param2 |> tryUpdateProgram program replaceIndex
-
         (updatedProgram, nextIndex)
 
     let multiplyAction program parameters parametermode: int list option * int =
         let (p1, p2, replaceIndex, nextIndex) = parameters
-        let (p1mode, p2mode) = parametermode
+        let (p1mode, p2mode, _) = parametermode
         let param1 = getParameter program p1mode p1
         let param2 = getParameter program p2mode p2
-
         let updatedProgram =
             multiply param1 param2
             |> tryUpdateProgram program replaceIndex
-
         (updatedProgram, nextIndex)
 
     let inputAction (input: int) program parameters _: int list option * int =
         let (replaceIndex, _, _, nextIndex) = parameters
-
         let updatedProgram =
             tryUpdateProgram program replaceIndex (Some input)
-
         (updatedProgram, nextIndex - 2)
 
     let outputAction program parameters _: int list option * int =
@@ -130,6 +124,48 @@ module IntcodeInterpreter =
         List.item (Option.get showIndex) program
         |> printfn "%d" // TODO both List.item and Option.get assume no None
         (Some(program), nextIndex - 2)
+
+    let jumpIfTrueAction program parameters parametermode: int list option * int =
+        let (p1, p2, _, nextIndex) = parameters
+        let (p1mode, p2mode, _) = parametermode
+        let param1 = getParameter program p1mode p1 |> Option.get
+        let param2 = getParameter program p2mode p2 |> Option.get
+        let nextInstructionPointer = 
+            if param1 <> 0 then param2
+            else nextIndex - 1
+        (Some program, nextInstructionPointer)
+
+    let jumpIfFalseAction program parameters parametermode: int list option * int =
+        let (p1, p2, _, nextIndex) = parameters
+        let (p1mode, p2mode, _) = parametermode
+        let param1 = getParameter program p1mode p1 |> Option.get
+        let param2 = getParameter program p2mode p2 |> Option.get
+        let nextInstructionPointer = 
+            if param1 = 0 then param2
+            else nextIndex - 1
+        (Some program, nextInstructionPointer)
+
+    let lessThanAction program parameters parametermode: int list option * int =
+        let (p1, p2, p3, nextIndex) = parameters
+        let (p1mode, p2mode, p3mode) = parametermode
+        let param1 = getParameter program p1mode p1
+        let param2 = getParameter program p2mode p2
+        let replaceIndex = getParameter program p3mode p3
+        let updatedProgram =
+            if param1 < param2 then Some 1 else Some 0
+            |> tryUpdateProgram program replaceIndex
+        (updatedProgram, nextIndex)
+
+    let equalsAction program parameters parametermode: int list option * int =
+        let (p1, p2, p3, nextIndex) = parameters
+        let (p1mode, p2mode, p3mode) = parametermode
+        let param1 = getParameter program p1mode p1
+        let param2 = getParameter program p2mode p2
+        let replaceIndex = getParameter program p3mode p3
+        let updatedProgram =
+            if param1 = param2 then Some 1 else Some 0
+            |> tryUpdateProgram program replaceIndex
+        (updatedProgram, nextIndex)
 
     let endProgram _ _ _: int list option * int =
         printfn "end"
@@ -141,6 +177,10 @@ module IntcodeInterpreter =
         | 2 -> multiplyAction
         | 3 -> inputAction input
         | 4 -> outputAction
+        | 5 -> jumpIfTrueAction
+        | 6 -> jumpIfFalseAction
+        | 7 -> lessThanAction
+        | 8 -> equalsAction
         | _ -> endProgram // 99
 
     let doAction program parameters parametermode action = action program parameters parametermode
@@ -152,22 +192,21 @@ module IntcodeInterpreter =
     let getOpcodeAndParameterModes instruction =
         let reconstructOpcode (p1:char) (p2:char) = [p1; p2] |> System.String.Concat |> int
         match (string instruction |> Seq.toList) with
-        | [p2; p1; opcode1; opcode2] -> reconstructOpcode opcode1 opcode2 , (getParameterMode p1, getParameterMode p2)
-        | [p1; opcode1; opcode2] -> reconstructOpcode opcode1 opcode2, (getParameterMode p1, PositionMode)
-        | _ -> instruction, (PositionMode, PositionMode)
+        | [p3; p2; p1; opcode1; opcode2] -> reconstructOpcode opcode1 opcode2 , (getParameterMode p1, getParameterMode p2, getParameterMode p3)
+        | [p2; p1; opcode1; opcode2] -> reconstructOpcode opcode1 opcode2 , (getParameterMode p1, getParameterMode p2, ImmediateMode)
+        | [p1; opcode1; opcode2] -> reconstructOpcode opcode1 opcode2, (getParameterMode p1, PositionMode, ImmediateMode)
+        | _ -> instruction, (PositionMode, PositionMode, ImmediateMode)
 
     let rec readProgram index input program =
         let instruction = List.item index program
         let getParam i = List.tryItem (index + i) program
         let parameters = (getParam 1, getParam 2, getParam 3, index + 4)
         let (opcode, parameterMode) = getOpcodeAndParameterModes instruction
-
         let next result =
             match result with
             | (Some prgrm, 0) -> prgrm
             | (Some prgrm, indx) -> readProgram indx input prgrm
             | _ -> program
-
         opcode
         |> (selectAction input)
         |> (doAction program parameters parameterMode)

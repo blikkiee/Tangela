@@ -14,8 +14,7 @@ type IntcodeInterpreterTestClass() =
     member this.IntcodeInterpreter(input, expected) =
         let result =
             decode input 
-            |> start 
-            |> Option.get 
+            |> (start 0)
             |> encode
 
         Assert.AreEqual(expected, result)
